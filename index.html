@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SwiftCad</title>
+  <link rel="icon" href="Assets/app-icon.svg" type="image/svg+xml">
+  <link rel="icon" href="Assets/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="Assets/favicon-16.png" sizes="16x16" type="image/png">
+  <link rel="apple-touch-icon" href="Assets/apple-touch-icon.png">
+  <style>
+    :root {
+      --paper: #f6f7f8;
+      --chrome: #f3f4f6;
+      --panel: #f9f9fb;
+      --hairline: #d1d5da;
+      --ink: #212933;
+      --muted: #66707a;
+      --accent: #2e66c7;
+      --dot-close: #ff5f57;
+      --dot-collapse: #febc2e;
+      --ruler-text: #515966;
+      --ruler: 22px;
+    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--chrome); color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; user-select: none; }
+    #status { padding: 32px 16px; text-align: center; font-size: 14px; color: var(--muted); }
+    .app { display: flex; flex-direction: column; height: 100%; }
+    .menubar { display: flex; align-items: center; height: 28px; padding: 0 8px; flex: none;
+      background: var(--chrome); border-bottom: 1px solid var(--hairline); font-size: 13px; }
+    .menu { position: relative; }
+    .menu-title { background: none; border: 0; padding: 3px 10px; border-radius: 4px;
+      font: inherit; color: var(--ink); cursor: default; }
+    .menu:hover .menu-title, .menu:focus-within .menu-title { background: rgba(46, 102, 199, 0.12); }
+    .menu-drop { display: none; position: absolute; top: 100%; left: 0; min-width: 220px; z-index: 20;
+      background: #fff; border: 1px solid var(--hairline); border-radius: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 4px 0; }
+    .menu:hover > .menu-drop, .menu:focus-within > .menu-drop { display: block; }
+    .menu-drop button { display: flex; width: 100%; align-items: center; justify-content: space-between;
+      gap: 24px; background: none; border: 0; padding: 5px 12px; font: 13px/1.2 inherit; color: var(--ink);
+      cursor: pointer; text-align: left; }
+    .menu-drop button:hover { background: var(--accent); color: #fff; }
+    .menu-drop .shortcut { font-size: 12px; color: var(--muted); }
+    .menu-drop button:hover .shortcut { color: rgba(255,255,255,0.8); }
+    .menu-sep { height: 1px; margin: 4px 8px; background: var(--hairline); }
+    .menu-disabled { padding: 5px 12px; color: var(--muted); }
+    .submenu { position: relative; }
+    .submenu > .menu-drop { display: none; left: 100%; top: 0; }
+    .submenu:hover > .menu-drop { display: block; }
+    .submenu-title { display: flex; width: 100%; }
+    .icon-btn.on { background: rgba(46, 102, 199, 0.16); border-color: var(--accent); color: var(--accent); }
+    .zoom-badge { display: none; position: absolute; top: 10px; left: 10px; z-index: 3;
+      font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(255,255,255,0.92);
+      border: 1px solid var(--accent); border-radius: 4px; padding: 5px 8px; pointer-events: none; }
+    .zoom-badge.on { display: block; }
+    .help-overlay { display: none; position: fixed; inset: 0; z-index: 40;
+      background: rgba(33, 41, 51, 0.28); align-items: center; justify-content: center; }
+    .help-overlay.on { display: flex; }
+    .help-card { width: 420px; max-width: calc(100% - 32px); background: #fff;
+      border: 1px solid var(--hairline); border-radius: 8px; padding: 22px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.18); }
+    .help-card h2 { margin: 0 0 10px; font-size: 16px; font-weight: 600; }
+    .help-card p { margin: 0 0 12px; font-size: 13px; white-space: pre-wrap; line-height: 1.45; }
+    .help-muted { color: var(--muted); }
+    .help-keys { font-size: 12px; font-weight: 600; color: var(--muted); margin: 4px 0 8px; }
+    .help-row { display: flex; justify-content: space-between; gap: 24px; font-size: 13px; padding: 3px 0; }
+    .help-row .shortcut { font: 12px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .help-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+    .help-close { height: 26px; padding: 0 12px; background: #fff; color: var(--ink);
+      border: 1px solid var(--hairline); border-radius: 5px; cursor: pointer; font: 12px/1 inherit; }
+    .help-close:hover { background: #f8f9fa; }
+    .settings-card { width: 460px; }
+    .settings-field { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; font-size: 13px; }
+    .settings-label { font-weight: 500; }
+    .settings-note { margin: 0 !important; font-size: 12px !important; }
+    .settings-field select { height: 28px; border: 1px solid var(--hairline); border-radius: 5px;
+      padding: 0 8px; font: inherit; color: var(--ink); background: #fff; }
+    .settings-check-row { display: flex; align-items: center; gap: 8px; }
+    .split-x { width: 5px; flex: none; cursor: col-resize; background: var(--hairline);
+      touch-action: none; z-index: 2; }
+    .split-y { height: 6px; flex: none; cursor: row-resize; background: var(--hairline);
+      touch-action: none; z-index: 2; }
+    .zoom-band { position: absolute; display: none; border: 1px solid #2e66c7;
+      background: rgba(46, 102, 199, 0.12); pointer-events: none; z-index: 4; }
+    .app.toolbar-bottom .toolbar { order: 3; border-bottom: 0; border-top: 1px solid var(--hairline); }
+    .app.toolbar-bottom .statusbar { order: 1; border-top: 0; border-bottom: 1px solid var(--hairline); }
+    .app.toolbar-bottom .workspace { order: 2; }
+    .app.toolbar-bottom .menubar { order: 0; }
+    .toolbar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; flex: none;
+      background: var(--chrome); border-bottom: 1px solid var(--hairline); }
+    .brand { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+    .brand-icon { display: block; width: 18px; height: 18px; flex: none; }
+    .cell-title { font: 12px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .toolbar .spacer { flex: 1; }
+    .summary { font-size: 11px; color: var(--muted); }
+    .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      height: 26px; min-width: 28px; padding: 0 8px; background: #fff; color: var(--ink);
+      border: 1px solid var(--hairline); border-radius: 5px; cursor: pointer; font: 12px/1 inherit; }
+    .icon-btn.icon-only { padding: 0; width: 28px; }
+    .icon-btn:hover { background: #f8f9fa; }
+    .icon-btn svg { display: block; }
+    .workspace { display: flex; flex: 1; min-height: 0; background: var(--paper); position: relative; }
+    .tools-rail { display: none; }
+    .tools-list { display: flex; flex-direction: column; gap: 4px; padding: 8px; overflow: auto; }
+    .tool-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
+      background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer;
+      color: var(--ink); font: 12px/1.2 -apple-system, BlinkMacSystemFont, sans-serif; text-align: left; }
+    .tool-row:hover { background: #fff; border-color: var(--hairline); }
+    .tool-row.on { background: rgba(46, 102, 199, 0.14); border-color: var(--accent); color: var(--accent); }
+    .tool-row svg { width: 14px; height: 14px; flex: none; }
+    .tool-divider { height: 1px; margin: 4px 0; background: var(--hairline); }
+    .props-editor { display: flex; flex-direction: column; gap: 6px; padding: 10px; overflow: auto; }
+    .prop-label { font-size: 11px; color: var(--muted); }
+    .prop-row { display: flex; align-items: center; gap: 8px; }
+    .prop-row span { width: 72px; flex: none; font-size: 11px; color: var(--muted); }
+    .prop-row input { flex: 1; min-width: 0; height: 24px; border: 1px solid var(--hairline);
+      border-radius: 4px; padding: 0 6px; font: 11px/1.2 ui-monospace, Menlo, monospace; }
+    .prop-btn { align-self: stretch; height: 26px; border: 1px solid var(--hairline); border-radius: 4px;
+      background: #fff; cursor: pointer; font-size: 11px; }
+    .prop-btn:hover { border-color: var(--accent); color: var(--accent); }
+    canvas.edit-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+      pointer-events: none; z-index: 3; }
+    .dock-column { display: none; flex-direction: column; flex: none; min-height: 0; background: var(--chrome); }
+    .dock-column.on { display: flex; }
+    .dock-column.left { border-right: 1px solid var(--hairline); }
+    .dock-column.right { border-left: 1px solid var(--hairline); }
+    .float-layer { position: absolute; inset: 0; pointer-events: none; z-index: 8; }
+    .dock-window { display: flex; flex-direction: column; min-height: 0; flex: 1; background: var(--panel);
+      border-bottom: 1px solid var(--hairline); }
+    .dock-window:last-child { border-bottom: 0; }
+    .dock-window.floating { position: absolute; flex: none; pointer-events: auto; border: 1px solid var(--hairline);
+      border-radius: 6px; box-shadow: 0 10px 28px rgba(0,0,0,0.16); overflow: hidden; }
+    .dock-window.source-drag { opacity: 0.4; }
+    .dock-window.collapsed { flex: 0 0 24px; min-height: 24px; max-height: 24px; overflow: hidden; }
+    .dock-window.collapsed .dock-body { display: none; }
+    .dock-window.floating.collapsed { height: 24px; }
+    .dock-ghost { display: none; position: absolute; width: 176px; height: 88px; z-index: 9;
+      pointer-events: none; background: var(--panel); border: 1px solid var(--accent);
+      border-radius: 6px; box-shadow: 0 12px 32px rgba(0,0,0,0.22); opacity: 0.94;
+      flex-direction: column; overflow: hidden; }
+    .dock-ghost.on { display: flex; }
+    .dock-ghost-title { height: 24px; padding: 0 8px; display: flex; align-items: center;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.6px; color: var(--accent);
+      background: var(--chrome); border-bottom: 1px solid var(--hairline); }
+    .dock-ghost-body { flex: 1; background: rgba(46, 102, 199, 0.06); }
+    .dock-title { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px;
+      background: var(--chrome); border-bottom: 1px solid var(--hairline); cursor: grab; flex: none; }
+    .dock-title.dragging { cursor: grabbing; }
+    .dock-title-label { flex: 1; font-size: 10px; font-weight: 600; letter-spacing: 0.6px; color: var(--muted); }
+    .dock-dot { border: 0; width: 10px; height: 10px; padding: 0; border-radius: 50%;
+      cursor: pointer; flex: none; }
+    .dock-dot.close { background: var(--dot-close); }
+    .dock-dot.collapse { background: var(--dot-collapse); }
+    .dock-dot:hover { filter: brightness(0.88); }
+    .dock-body { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--panel); }
+    .section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.6px; color: var(--muted);
+      padding: 12px 12px 8px; }
+    .section-title.row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .up-btn { border: 0; background: transparent; padding: 0; min-width: 18px; height: 18px;
+      font-size: 13px; line-height: 1; color: var(--ink); cursor: pointer; }
+    .up-btn:disabled { color: var(--muted); cursor: default; }
+    .refs-title { border-top: 1px solid var(--hairline); padding-top: 10px; }
+    .ref-list { flex: 1; min-height: 0; overflow: auto; }
+    .ref-row { display: flex; align-items: center; gap: 6px; padding: 0 12px; height: 22px; cursor: pointer; }
+    .ref-row:hover { background: rgba(46, 102, 199, 0.08); }
+    .ref-arrow { color: var(--muted); }
+    .ref-name { flex: 1; font: 11px/1 ui-monospace, Menlo, monospace; min-width: 0; }
+    .ref-current { flex: 1; font: 11px/1 ui-monospace, Menlo, monospace; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ref-empty { font-size: 11px; color: var(--muted); padding: 12px; }
+    .ref-offset { font: 10px ui-monospace, Menlo, monospace; color: var(--muted); }
+    .section-sub { font-size: 11px; font-weight: 600; color: var(--ink); padding: 0 12px 6px; }
+    .filter { margin: 8px 12px; width: calc(100% - 24px); box-sizing: border-box; font-size: 11px;
+      padding: 4px 8px; border: 1px solid var(--hairline); border-radius: 5px; background: #fff; }
+    .cell-list, .layer-list { flex: 1; overflow: auto; min-height: 0; }
+    .cell-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 12px;
+      cursor: pointer; }
+    .cell-row.viewing { background: rgba(46, 102, 199, 0.12); }
+    .cell-name { flex: 1; font: 12px/1.2 ui-monospace, Menlo, monospace; min-width: 0; }
+    .badge { font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+      background: var(--accent); color: #fff; }
+    .badge.root { background: transparent; color: var(--muted); font-weight: 600; }
+    .cell-meta { width: 100%; font-size: 10px; color: var(--muted); }
+    .layer-row { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 28px; cursor: pointer; }
+    .layer-row.off { background: rgba(243, 244, 246, 0.6); }
+    .layer-row.active { background: rgba(46, 102, 199, 0.12); }
+    .swatch { width: 10px; height: 10px; border-radius: 2px; border: 1px solid var(--hairline); flex: none; }
+    .layer-name { flex: 1; font: 12px ui-monospace, Menlo, monospace; }
+    .layer-row .icon-btn { border: 0; background: transparent; min-width: 22px; width: 22px; height: 22px;
+      color: var(--accent); }
+    .layer-row.off .icon-btn { color: var(--muted); }
+    .viewport-column { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--paper); }
+    .ruler-top { display: flex; height: var(--ruler); flex: none; }
+    .ruler-corner { width: var(--ruler); flex: none; background: var(--chrome);
+      border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+    canvas.ruler-h { flex: 1; min-width: 0; height: var(--ruler); display: block; background: var(--chrome); }
+    .ruler-mid { display: flex; flex: 1; min-height: 0; }
+    canvas.ruler-v { width: var(--ruler); flex: none; display: block; background: var(--chrome);
+      border-right: 1px solid var(--hairline); }
+    .canvas-host { flex: 1; min-width: 0; position: relative; }
+    canvas#layout { position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+      cursor: grab; touch-action: none; }
+    canvas#layout.dragging { cursor: grabbing; }
+    .dimension-bar { position: absolute; left: 10px; bottom: 10px; z-index: 3;
+      font: 500 11px ui-monospace, Menlo, monospace; color: var(--ink);
+      background: rgba(255,255,255,0.92); border: 1px solid var(--hairline); border-radius: 4px;
+      padding: 5px 8px; pointer-events: none; }
+    .busy-overlay { display: none; position: absolute; inset: 0; z-index: 5;
+      background: rgba(246, 247, 248, 0.78); align-items: center; justify-content: center;
+      flex-direction: column; gap: 10px; font-size: 13px; color: var(--ink); }
+    .busy-overlay.on { display: flex; }
+    .busy-overlay .spin { width: 22px; height: 22px; border: 2px solid var(--hairline);
+      border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .statusbar { display: flex; align-items: center; gap: 18px; height: 26px; padding: 0 12px; flex: none;
+      background: var(--chrome); border-top: 1px solid var(--hairline);
+      font: 11px ui-monospace, Menlo, monospace; color: var(--ink); }
+    .statusbar .hint { margin-left: auto; color: var(--muted); }
+    .statusbar .error { color: #b42318; }
+  </style>
+</head>
+<body>
+  <p id="status">Loading SwiftCad…</p>
+  <script type="module">
+    const status = document.getElementById("status");
+    try {
+      const candidates = [
+        new URL("./Package/", import.meta.url),
+        new URL("./.build/plugins/PackageToJS/outputs/Package/", import.meta.url),
+      ];
+      let pkg = candidates[0];
+      for (const candidate of candidates) {
+        try {
+          const probe = await fetch(new URL("index.js", candidate), { cache: "no-store" });
+          if (probe.ok) { pkg = candidate; break; }
+        } catch (_) { /* try next */ }
+      }
+      const wasmUrl = new URL("WebClientApp.wasm", pkg);
+      wasmUrl.searchParams.set("v", "pages");
+      const { init } = await import(new URL("index.js", pkg).href + "?v=pages");
+      await init({ module: fetch(wasmUrl, { cache: "no-store" }) });
+      status?.remove();
+    } catch (error) {
+      if (status) status.textContent = "Failed to start SwiftCad: " + error;
+      console.error(error);
+    }
+  </script>
+</body>
+</html>
