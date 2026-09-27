@@ -1,0 +1,11 @@
+( Demo Cell — former default startup layout );
+DS 1 1 1;
+9 TOP;
+L metal1;
+B 120 80 60 40;
+W 2 10 10 110 10 110 70;
+L nwell;
+B 40 30 40 35;
+DF;
+C 1;
+E
